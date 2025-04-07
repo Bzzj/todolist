@@ -1,4 +1,4 @@
-import React,{useState} from 'react';
+import React,{useState,useEffect} from 'react';
 
 import ChangeCircleIcon from '@mui/icons-material/ChangeCircle';
 import Button from '@mui/material/Button';
@@ -23,8 +23,12 @@ import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import Checkbox from '@mui/material/Checkbox';
 
+import Modal from '@mui/material/Modal';
 
-
+//取得日期
+import dayjs from 'dayjs';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+dayjs.extend(isSameOrAfter);
 
 export default function Nav(){
 
@@ -32,6 +36,8 @@ export default function Nav(){
 	const [selectedHeader, setSelectedHeader] = useState(1);
 	const [dialogType, setDialogType] = useState(null); 
 	const [showRemind, setShowRemind] = useState(false);
+
+	const [todolist, setTodolist] = useState([]);
 
 	const handleClickOpenChangeHeader = (type) => {
 	    setOpenChangeHeader(true);
@@ -60,13 +66,26 @@ export default function Nav(){
   	const label = { inputProps: { 'aria-label': 'Checkbox demo' }};
 
   	const [state, setState] = useState({
-	  	'red': { color: '#be1521', selected: true },
-	  	'yellow': { color: '#fac000', selected: false },
-	  	'green': { color: '#449631', selected: false },
-	  	'blue': { color: '#0061b0', selected: false },
-	  	'purple': { color: '#9964a5', selected: false },
-	  	'white': { color: '#ffffff', selected: false },
+	  	'red': { color: '#be1521', selected: true, backcolor:'#feeae9' },
+	  	'yellow': { color: '#fac000', selected: false, backcolor:'#fdfee9' },
+	  	'green': { color: '#449631', selected: false ,backcolor:'#f2fee9'},
+	  	'blue': { color: '#0061b0', selected: false ,backcolor:'#e9f8fe'},
+	  	'purple': { color: '#9964a5', selected: false ,backcolor:'#EDE9FE'},
+	  	'white': { color: '#ffffff', selected: false ,backcolor:'#f5f5f2'},
 	});
+
+	const [selectedItem, setSelectedItem] = useState(null);
+
+	const today = dayjs();
+
+	const [inputValue, setInputValue] = useState({
+		'todolistTitle':"",
+		'todolistContent':"",
+		'todolistDate': today.format('YYYY-MM-DD'),
+		'todolistDuedate':""
+	});
+
+
 
 	const ColorSelected = (colorType) =>{
 		setState((prev)=>{
@@ -83,8 +102,66 @@ export default function Nav(){
 	
 	};
 
+	
+
+	//check有沒有輸入title
+	const [titleError, setTitleError] = useState(false);
+
 	const AddTodolist = () =>{
+
+		//先檢查有沒有輸入好title
+		if(inputValue.todolistTitle.trim().length === 0){
+			setTitleError(true);
+			return false;
+		}
+
+		//選顏色給新增的程式知道使用者選了什麼顏色
+		const findSelectColor = Object.keys(state).find((key)=>state[key].selected);
+
+		const newItem = {
+			id:todolist.length + 1,
+			//date:today,
+			itemcolor:findSelectColor,
+			...inputValue, //抓出使用者在待辦事項輸入的訊息
+			colorNum:state[findSelectColor].backcolor
+		};
+
 		
+
+		setTodolist((prev)=>[...prev,newItem]);
+
+		console.log(newItem);
+
+		//紀錄完這次新增的輸入後清空，不然下次新增會記錄到上次
+		setInputValue({
+			'todolistTitle':"",
+			'todolistContent':"",
+			'todolistDate': today.format('YYYY-MM-DD'),
+			'todolistDuedate':""
+		});
+		setTitleError(false); 
+
+		return true;
+
+	}
+
+	const [openModal, setOpenModal] = useState(false);
+  	const handleModalOpen = () => setOpenModal(true);
+  	const handleModalClose = () => setOpenModal(false);
+	
+	const modalStyle = (color) => {
+		const style ={
+			position: 'absolute',
+			top: '50%',
+			left: '50%',
+			transform: 'translate(-50%, -50%)',
+			width: 400,
+			bgcolor: state[color].backcolor,
+			boxShadow: 24,
+		 	p: 4,
+		 	borderRadius: '12px',
+	 	}
+	 	return style;
 	}
 
 	return(
@@ -168,26 +245,62 @@ export default function Nav(){
         	}
 			{/*右半*/}
 			<div className="w-2/3 overflow-y-auto">
-				<div className="flex justify-center font-bold text-5xl mt-5">
+				<div className="flex justify-center font-bold text-5xl mt-5 mb-3">
 					待辦事項
 				</div>
 				
-				<div className="space-y-2 h-full">
-					<div className="border-l-8 border-black mx-6 my-4 pl-2 font-semibold">
-						2025/03/31
+				<div className="flex flex-wrap items-start">
+					{todolist&&todolist.map((item) => (
+					<div className="flex flex-col w-1/4 my-4">
+						<div className="border-l-8 border-black mx-6 my-1 pl-2 font-semibold text-nowrap">
+							{item.todolistDate}
+						</div>
+						<Box 
+							sx={{
+								width:'80%',
+								height:'100px',
+								marginLeft:3,
+								borderRadius: '12px',
+								boxShadow: '2px 2px 8px rgba(173, 181, 189 ,1)',
+								backgroundColor:item.colorNum,
+								position: 'relative',
+								cursor: 'pointer'
+							}}
+							onClick={() => {
+						        setSelectedItem(item);
+						        setOpenModal(true);
+						    }}
+						>
+							<img className="absolute top-0 scale-x-[-1]" src={`./public/pin/${item.itemcolor}Pin.png`} alt="" />
+							<div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-xl text-nowrap font-bold">
+								{item.todolistTitle}
+							</div>
+						</Box>
+						
 					</div>
-					<Box 
-						sx={{
-							width:'20%',
-							height:'30%',
-							margin:3,
-							borderRadius: '12px',
-							boxShadow: '2px 2px 8px rgba(173, 181, 189 ,1)',
-							backgroundColor:'#EDE9FE',
-							position: 'relative'
-						}}>
-						<img className="absolute top-0 scale-x-[-1]" src="./public/pin/purplePin.png" alt="" />
-					</Box>
+				
+					
+				    ))}
+
+				    <Modal
+				        open={openModal}
+				        onClose={()=>{
+					        	handleModalClose();
+					        	setSelectedItem(null);
+					        }	        	
+				        }
+				        aria-labelledby="modal-modal-title"
+				        aria-describedby="modal-modal-description"
+				    >
+				        <Box sx={selectedItem ?modalStyle(selectedItem.itemcolor): {}}>
+				        	<Typography id="modal-modal-title" variant="h6" component="h2" sx={{fontWeight: 'bold'}}>
+					           	{selectedItem ?selectedItem.todolistTitle: ''}
+					       	</Typography>
+					      	<Typography id="modal-modal-description" sx={{ mt: 2 }}>
+					        	{selectedItem ?selectedItem.todolistContent: ''}
+					        </Typography>
+					    </Box>
+					</Modal>
 					
 					<AddCircleIcon 
 						sx={{
@@ -241,6 +354,8 @@ export default function Nav(){
 					        </DialogContentText>
 					        <TextField
 						        required
+						        error={titleError}
+						        helperText={titleError ? "請輸入待辦事項標題" : ""}
 						        id="outlined-required"
 						        sx={{
 						        	ml:4,
@@ -253,6 +368,7 @@ export default function Nav(){
 								    },
 								}}
 								placeholder="例如：預約會議室"
+								onChange={(e)=>setInputValue((prev)=>({...prev,todolistTitle:e.target.value}))}
 						    />
 					    </div>
 					    <div className="flex items-center mb-6">
@@ -262,7 +378,7 @@ export default function Nav(){
 					        		fontSize:'15px',
 					        		borderLeft: '8px solid #000',
 					        		pl: 1,
-					        		whiteSpace: 'nowrap', 
+					        		whiteSpace: 'nowrap'
 					        	}}
 					        >
 					        	待辦事項樣式(必填)
@@ -293,7 +409,8 @@ export default function Nav(){
 								rows={3} // 顯示初始行數
 								variant="outlined"
 								placeholder="請輸入您的待辦事項詳細內容...  (例如：下週要與課長報告這個月進度，預約五樓會議室)"
-								sx={{width:'60%',ml:4}}							
+								sx={{width:'60%',ml:4}}
+								onChange={(e)=>setInputValue((prev)=>({...prev,todolistContent:e.target.value}))}							
 							/>
 					    </div>
 					    <div className="flex items-center mb-6">
@@ -309,7 +426,11 @@ export default function Nav(){
 					        	待辦事項日期
 					        </DialogContentText>
 					        <LocalizationProvider dateAdapter={AdapterDayjs}>
-						    	<DesktopDatePicker sx={{width:'60%',ml:4,'& .MuiInputBase-root': {height:'40px'}}}/>
+						    	<DesktopDatePicker 
+						    		sx={{width:'60%',ml:4,'& .MuiInputBase-root': {height:'40px'}}}
+						    		minDate={dayjs()}
+						    		onChange={(e)=>setInputValue((prev)=>({...prev,todolistDate:e?e.format('YYYY-MM-DD') : today.format('YYYY-MM-DD') }))}
+						    	/>
 						    </LocalizationProvider>
 					    </div>
 					    <div className="flex items-center">
@@ -333,15 +454,26 @@ export default function Nav(){
 					        
 					        
 						        <LocalizationProvider dateAdapter={AdapterDayjs}>
-							    	<DesktopDatePicker disabled={!showRemind} sx={{width:'60%',ml:4,'& .MuiInputBase-root': {height:'40px'}}}/>
+							    	<DesktopDatePicker 
+							    		disabled={!showRemind} 
+							    		sx={{width:'60%',ml:4,'& .MuiInputBase-root': {height:'40px'}}}
+							    		onChange={(e)=>setInputValue((prev)=>({...prev,todolistDuedate:e.target.value}))}
+							    	/>
 							    </LocalizationProvider>
 						   	
 					    </div>
 					    
 		        	</DialogContent>
 			        <DialogActions>
-			          <Button onClick={handleCloseChangeHeader}>取消</Button>
-			          <Button onClick={handleCloseChangeHeader}>新增</Button>
+			          	<Button onClick={handleCloseChangeHeader}>取消</Button>
+			          	<Button 
+			          		onClick={() => {
+							    const result = AddTodolist();
+							    if (result) {handleCloseChangeHeader();}
+							}}
+			          	>
+			          		新增
+			          	</Button>
 			        </DialogActions>
 	        	</Dialog>
         	}
